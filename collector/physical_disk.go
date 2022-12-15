@@ -229,23 +229,18 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// Goals
 	// Query PDH for specified counters for ALL disks in a system.
 	// Extra credit: allow users to blacklist disks.
-	
+
 	// BEGIN: Imported test case to drive PDH query.
-	// pc, err := NewPerfCounter("\physicaldisk(*)\avg. disk sec/read", true)  // TODO (cbwest): check what 'true' does.
-	// require.NoError(t, err, "Failed to create performance counter: %v", err)
+	pc, _ := newPerfCounter(`\physicaldisk(1)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
 
-	// assert.NotNil(t, pc.query)
-	// assert.NotNil(t, pc.handle)
+	// OLD HARD-CODED VALUE.
+	// var vals [1]win_perf_counters.CounterValue
+	// vals[0] = win_perf_counters.CounterValue{InstanceName: `\physicaldisk(1)\avg. disk sec/read`, Value: 42.0}
 
-	// since we collected on startup, the next collection will return a measured value
-	var vals [1]win_perf_counters.CounterValue
-	vals[0] = win_perf_counters.CounterValue{InstanceName: `\physicaldisk(1)\avg. disk sec/read`, Value: 42.0}
-	// vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
-	// require.NoError(t, err)
-	// assert.Greater(t, vals[0].Value, float64(0))
+	var vals []win_perf_counters.CounterValue
+	vals, _ = pc.query.GetFormattedCounterArrayDouble(pc.handle)
 
-	// err = pc.query.Close()
-	// require.NoError(t, err, "Failed to close initialized performance counter query: %v", err)
+	_ = pc.query.Close()
 	// END: Imported test case to drive PDH query.
 
 	// Rework this to allow disk blacklisting.
@@ -351,4 +346,45 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 
 	return nil, nil
+}
+
+
+// Taken from: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/0eff6a45c4cac90f93fad640ff0c5d63561a2a34/pkg/winperfcounters/watcher.go#L43
+type perfCounter struct {
+	path   string
+	query  win_perf_counters.PerformanceQuery
+	handle win_perf_counters.PDH_HCOUNTER
+}
+
+// Taken from: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/0eff6a45c4cac90f93fad640ff0c5d63561a2a34/pkg/winperfcounters/watcher.go#L68
+// newPerfCounter returns a new performance counter for the specified descriptor.
+func newPerfCounter(counterPath string, collectOnStartup bool) (*perfCounter, error) {
+	query := &win_perf_counters.PerformanceQueryImpl{}
+	err := query.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	var handle win_perf_counters.PDH_HCOUNTER
+	handle, err = query.AddEnglishCounterToQuery(counterPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Some perf counters (e.g. cpu) return the usage stats since the last measure.
+	// We collect data on startup to avoid an invalid initial reading
+	if collectOnStartup {
+		err = query.CollectData()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	counter := &perfCounter{
+		path:   counterPath,
+		query:  query,
+		handle: handle,
+	}
+
+	return counter, nil
 }
