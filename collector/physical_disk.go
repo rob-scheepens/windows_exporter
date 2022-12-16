@@ -243,6 +243,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	var vals []win_perf_counters.CounterValue
 	vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
 	if err != nil {
+		fmt.Println(vals)
 		log.Fatal(err)
 	}
 
