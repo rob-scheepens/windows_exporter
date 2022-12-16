@@ -260,6 +260,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// }
 
 	for _, val := range vals {
+		fmt.Println(`I found a value!`)
 		// ch <- prometheus.MustNewConstMetric(
 		// 	c.RequestsQueued,
 		// 	prometheus.GaugeValue,
