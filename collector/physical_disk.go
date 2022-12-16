@@ -231,7 +231,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// Extra credit: allow users to blacklist disks.
 
 	// BEGIN: Imported test case to drive PDH query.
-	pc, _ := newPerfCounter(`\physicaldisk(1)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
+	pc, _ := newPerfCounter(`\physicaldisk(*)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
 
 	// OLD HARD-CODED VALUE.
 	// var vals [1]win_perf_counters.CounterValue
