@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/go-errors/errors"
 	"github.com/influxdata/telegraf/plugins/inputs/win_perf_counters"
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
@@ -233,7 +234,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// BEGIN: Imported test case to drive PDH query.
 	pc, err := newPerfCounter(`\physicaldisk(*)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
+		log.Fatal(err.(*errors.Error).ErrorStack())
 	}
 
 	// OLD HARD-CODED VALUE.
@@ -244,12 +246,14 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
 	if err != nil {
 		fmt.Println(vals)
-		log.Fatal(err)
+		// log.Fatal(err)
+		log.Fatal(err.(*errors.Error).ErrorStack())
 	}
 
 	err = pc.query.Close()
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
+		log.Fatal(err.(*errors.Error).ErrorStack())
 	}
 	// END: Imported test case to drive PDH query.
 
