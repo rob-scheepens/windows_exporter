@@ -1,4 +1,3 @@
-//go:build windows
 // +build windows
 
 package collector
@@ -41,7 +40,7 @@ type PhysicalDiskCollector struct {
 	// WriteTime        *prometheus.Desc
 	// IdleTime         *prometheus.Desc
 	// SplitIOs         *prometheus.Desc
-	ReadLatency *prometheus.Desc
+	ReadLatency      *prometheus.Desc
 	// WriteLatency     *prometheus.Desc
 	// ReadWriteLatency *prometheus.Desc
 
@@ -57,6 +56,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	// Put them in a list?
 	// Submit PDH queries?
 	// Iterate through results?
+
 
 	// Static init, collect in a list:
 
@@ -75,6 +75,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	// ),
 
 	// For statically init'd list: return collectors:
+
 
 	return &PhysicalDiskCollector{
 		// RequestsQueued: prometheus.NewDesc(
@@ -212,9 +213,9 @@ type PDHDiskMap struct {
 }
 
 type MetricMap struct {
-	PdhQuery         string
+	PdhQuery                   string
 	PromMetricSuffix string
-	PromHelp         string
+	PromHelp		string
 }
 
 func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
@@ -225,14 +226,15 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// 	return nil, err
 	// }
 
+
 	// Goals
 	// Query PDH for specified counters for ALL disks in a system.
 	// Extra credit: allow users to blacklist disks.
 
 	// BEGIN: Imported test case to drive PDH query.
-	pc, err := newPerfCounter(`\physicaldisk(*)\avg. disk sec/read`, true) // TODO (cbwest): check what 'true' does.
+	pc, err := newPerfCounter(`\physicaldisk(*)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
 	if err != nil {
-		log.Fatal(fmt.Sprintf("0x%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
+		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
 			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
 	}
 
@@ -244,17 +246,13 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
 	if err != nil {
 		fmt.Println(vals)
-		vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
-		if err != nil {
-			fmt.Println(vals)
-			log.Fatal(fmt.Sprintf("0x%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
-				win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
-		}
+		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
+			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
 	}
 
 	err = pc.query.Close()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("0x%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
+		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
 			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
 	}
 	// END: Imported test case to drive PDH query.
@@ -265,6 +263,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// 	!c.diskWhitelistPattern.MatchString(disk.Name) {
 	// 	continue
 	// }
+
 
 	// BAD! (nested loops)
 	// for val in range vals {
@@ -363,6 +362,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	return nil, nil
 }
+
 
 // Taken from: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/0eff6a45c4cac90f93fad640ff0c5d63561a2a34/pkg/winperfcounters/watcher.go#L43
 type perfCounter struct {
