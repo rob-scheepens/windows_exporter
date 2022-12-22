@@ -15,6 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/leoluk/perflib_exporter v0.2.0
+	github.com/lxn/win v0.0.0-20210218163916-a377121e959e // indirect
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/common v0.38.0

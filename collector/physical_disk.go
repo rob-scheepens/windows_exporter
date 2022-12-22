@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"golang.org/x/sys/windows"
+	"github.com/lxn/win"
 )
 
 func init() {
@@ -231,19 +231,20 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 
 	// BEGIN: golang.org/x/sys/windows APPROACH:
-	var handle windows.PDH_HQUERY
-	var counterHandle windows.PDH_HCOUNTER
-	ret := windows.PdhOpenQuery(0, 0, &handle)
-	ret = windows.PdhAddEnglishCounter(handle, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
-	var derp windows.PDH_FMT_COUNTERVALUE_DOUBLE
+	var handle win.PDH_HQUERY
+	var counterHandle win.PDH_HCOUNTER 
+	ret := win.PdhOpenQuery(0, 0, &handle)
+	ret = win.PdhAddEnglishCounter(handle, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
+	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 
-	ret = windows.PdhCollectQueryData(handle)
+	ret = win.PdhCollectQueryData(handle)
 	fmt.Printf("Collect return code is %x\n", ret) // return code will be PDH_CSTATUS_INVALID_DATA
-	ret = windows.PdhGetFormattedCounterValueDouble(counterHandle, 0, &derp)
+	var zero uint32 = 0
+	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 
-	ret = windows.PdhCollectQueryData(handle)
+	ret = win.PdhCollectQueryData(handle)
 	fmt.Printf("Collect return code is %x\n", ret) // return code will be ERROR_SUCCESS
-	ret = windows.PdhGetFormattedCounterValueDouble(counterHandle, 0, &derp)
+	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	// END: golang.org/x/sys/windows APPROACH:
 
 
@@ -265,8 +266,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// 	}
 	// }
 
-	for _, val := range vals {
-		fmt.Println(`I found a value!`)
+	// for _, val := range vals {
+	// 	fmt.Println(`I found a value!`)
 		// ch <- prometheus.MustNewConstMetric(
 		// 	c.RequestsQueued,
 		// 	prometheus.GaugeValue,
@@ -330,12 +331,12 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		// 	disk.Name,
 		// )
 
-		ch <- prometheus.MustNewConstMetric(
-			c.ReadLatency,
-			prometheus.CounterValue,
-			val.Value.(float64),
-			"disk1-parse-later",
-		)
+		// ch <- prometheus.MustNewConstMetric(
+		// 	c.ReadLatency,
+		// 	prometheus.CounterValue,
+		// 	val.Value.(float64),
+		// 	"disk1-parse-later",
+		// )
 
 		// ch <- prometheus.MustNewConstMetric(
 		// 	c.WriteLatency,
@@ -350,48 +351,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		// 	disk.AvgDiskSecPerTransfer*ticksToSecondsScaleFactor,
 		// 	disk.Name,
 		// )
-	}
+	// }
 
 	return nil, nil
-}
-
-
-// Taken from: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/0eff6a45c4cac90f93fad640ff0c5d63561a2a34/pkg/winperfcounters/watcher.go#L43
-type perfCounter struct {
-	path   string
-	query  win_perf_counters.PerformanceQuery
-	handle win_perf_counters.PDH_HCOUNTER
-}
-
-// Taken from: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/0eff6a45c4cac90f93fad640ff0c5d63561a2a34/pkg/winperfcounters/watcher.go#L68
-// newPerfCounter returns a new performance counter for the specified descriptor.
-func newPerfCounter(counterPath string, collectOnStartup bool) (*perfCounter, error) {
-	query := &win_perf_counters.PerformanceQueryImpl{}
-	err := query.Open()
-	if err != nil {
-		return nil, err
-	}
-
-	var handle win_perf_counters.PDH_HCOUNTER
-	handle, err = query.AddEnglishCounterToQuery(counterPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Some perf counters (e.g. cpu) return the usage stats since the last measure.
-	// We collect data on startup to avoid an invalid initial reading
-	if collectOnStartup {
-		err = query.CollectData()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	counter := &perfCounter{
-		path:   counterPath,
-		query:  query,
-		handle: handle,
-	}
-
-	return counter, nil
 }
