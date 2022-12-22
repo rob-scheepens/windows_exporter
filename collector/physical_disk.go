@@ -5,12 +5,10 @@ package collector
 import (
 	"fmt"
 	"regexp"
-
-	// "github.com/go-errors/errors"
-	"github.com/influxdata/telegraf/plugins/inputs/win_perf_counters"
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"golang.org/x/sys/windows"
 )
 
 func init() {
@@ -231,30 +229,24 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// Query PDH for specified counters for ALL disks in a system.
 	// Extra credit: allow users to blacklist disks.
 
-	// BEGIN: Imported test case to drive PDH query.
-	pc, err := newPerfCounter(`\physicaldisk(*)\avg. disk sec/read`, true)  // TODO (cbwest): check what 'true' does.
-	if err != nil {
-		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
-			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
-	}
 
-	// OLD HARD-CODED VALUE.
-	// var vals [1]win_perf_counters.CounterValue
-	// vals[0] = win_perf_counters.CounterValue{InstanceName: `\physicaldisk(1)\avg. disk sec/read`, Value: 42.0}
+	// BEGIN: golang.org/x/sys/windows APPROACH:
+	var handle windows.PDH_HQUERY
+	var counterHandle windows.PDH_HCOUNTER
+	ret := windows.PdhOpenQuery(0, 0, &handle)
+	ret = windows.PdhAddEnglishCounter(handle, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
+	var derp windows.PDH_FMT_COUNTERVALUE_DOUBLE
 
-	var vals []win_perf_counters.CounterValue
-	vals, err = pc.query.GetFormattedCounterArrayDouble(pc.handle)
-	if err != nil {
-		fmt.Println(vals)
-		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
-			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
-	}
+	ret = windows.PdhCollectQueryData(handle)
+	fmt.Printf("Collect return code is %x\n", ret) // return code will be PDH_CSTATUS_INVALID_DATA
+	ret = windows.PdhGetFormattedCounterValueDouble(counterHandle, 0, &derp)
 
-	err = pc.query.Close()
-	if err != nil {
-		log.Fatal(fmt.Sprintf("%X %s %s", err.(*win_perf_counters.PdhError).ErrorCode,
-			win_perf_counters.PDHErrors[err.(*win_perf_counters.PdhError).ErrorCode], err))
-	}
+	ret = windows.PdhCollectQueryData(handle)
+	fmt.Printf("Collect return code is %x\n", ret) // return code will be ERROR_SUCCESS
+	ret = windows.PdhGetFormattedCounterValueDouble(counterHandle, 0, &derp)
+	// END: golang.org/x/sys/windows APPROACH:
+
+
 	// END: Imported test case to drive PDH query.
 
 	// Rework this to allow disk blacklisting.
