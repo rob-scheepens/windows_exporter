@@ -239,12 +239,13 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	ret = win.PdhCollectQueryData(handle)
 	fmt.Printf("Collect return code is %x\n", ret) // return code will be PDH_CSTATUS_INVALID_DATA
-	var zero uint32 = 0
+	var zero uint32 = 0  // TODO (cbwest): Figure out what this argument does.
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 
 	ret = win.PdhCollectQueryData(handle)
 	fmt.Printf("Collect return code is %x\n", ret) // return code will be ERROR_SUCCESS
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
+	fmt.Println(derp)
 	// END: golang.org/x/sys/windows APPROACH:
 
 
