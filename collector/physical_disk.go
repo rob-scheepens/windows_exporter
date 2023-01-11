@@ -244,17 +244,21 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %x\n", ret)
 	}
 
-	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 
 	ret = win.PdhCollectQueryData(handle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %x\n", ret)
 	}
 
+
+	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 	var zero uint32 = 0  // TODO (cbwest): Figure out what this argument does.
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
 		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+	}
+	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
+		fmt.Printf("ERROR: First CStatus is %x\n", derp.CStatus)
 	}
 
 	ret = win.PdhCollectQueryData(handle)
@@ -266,6 +270,9 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
 		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+	}
+	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
+		fmt.Printf("ERROR: Second CStatus is %x\n", derp.CStatus)
 	}
 	fmt.Println(derp)
 
