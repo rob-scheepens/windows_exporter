@@ -236,18 +236,18 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	ret := win.PdhOpenQuery(0, 0, &handle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: PdhOpenQuery return code is %x\n", ret)
+		fmt.Printf("ERROR: PdhOpenQuery return code is %X\n", ret)
 	}
 
 	ret = win.PdhAddEnglishCounter(handle, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %x\n", ret)
+		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %X\n", ret)
 	}
 
 
 	ret = win.PdhCollectQueryData(handle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: First PdhCollectQueryData return code is %x\n", ret)
+		fmt.Printf("ERROR: First PdhCollectQueryData return code is %X\n", ret)
 	}
 
 
@@ -255,26 +255,26 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	var zero uint32 = 0  // TODO (cbwest): Figure out what this argument does.
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %X\n", ret)
 	}
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First CStatus is %x\n", derp.CStatus)
+		fmt.Printf("ERROR: First CStatus is %s (%X)\n", derp.CStatus, derp.CStatus)
 	}
 
 	ret = win.PdhCollectQueryData(handle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %x\n", ret)
+		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %X\n", ret)
 	}
-	fmt.Printf("Collect return code is %x\n", ret) // return code will be ERROR_SUCCESS
+	fmt.Printf("Collect return code is %X\n", ret) // return code will be ERROR_SUCCESS
 
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %X\n", ret)
 	}
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second CStatus is %x\n", derp.CStatus)
+		fmt.Printf("ERROR: Second CStatus is %s (%X)\n", derp.CStatus, derp.CStatus)
 	}
-	fmt.Println(derp.DoubleValue)
+	fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
 
 	// END: golang.org/x/sys/windows APPROACH:
 
