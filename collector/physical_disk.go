@@ -229,8 +229,12 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// Query PDH for specified counters for ALL disks in a system.
 	// Extra credit: allow users to blacklist disks.
 
+	// TODO (2023-01-11):
+	// - Put PdhOpenQuery() in context creation.
+	// - Put PdhAddEnglishCounter() in init() (maybe?)
+	// - Call PdhCollectQueryData() and PdhGetFormattedCounterValueDouble() in this function, collect()
 
-	// BEGIN: golang.org/x/sys/windows APPROACH:
+	// BEGIN: golang.org/x/sys/windows
 	var handle win.PDH_HQUERY
 	var counterHandle win.PDH_HCOUNTER 
 
