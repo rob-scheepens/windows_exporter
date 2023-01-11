@@ -274,7 +274,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: Second CStatus is %x\n", derp.CStatus)
 	}
-	fmt.Println(derp)
+	fmt.Println(derp.DoubleValue)
 
 	// END: golang.org/x/sys/windows APPROACH:
 
