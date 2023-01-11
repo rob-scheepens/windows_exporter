@@ -233,19 +233,42 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// BEGIN: golang.org/x/sys/windows APPROACH:
 	var handle win.PDH_HQUERY
 	var counterHandle win.PDH_HCOUNTER 
+
 	ret := win.PdhOpenQuery(0, 0, &handle)
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: PdhOpenQuery return code is %x\n", ret)
+	}
+
 	ret = win.PdhAddEnglishCounter(handle, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %x\n", ret)
+	}
+
 	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 
 	ret = win.PdhCollectQueryData(handle)
-	fmt.Printf("Collect return code is %x\n", ret) // return code will be PDH_CSTATUS_INVALID_DATA
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: First PdhCollectQueryData return code is %x\n", ret)
+	}
+
 	var zero uint32 = 0  // TODO (cbwest): Figure out what this argument does.
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+	}
 
 	ret = win.PdhCollectQueryData(handle)
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %x\n", ret)
+	}
 	fmt.Printf("Collect return code is %x\n", ret) // return code will be ERROR_SUCCESS
+
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
+	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
+		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %x\n", ret)
+	}
 	fmt.Println(derp)
+
 	// END: golang.org/x/sys/windows APPROACH:
 
 
