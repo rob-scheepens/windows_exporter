@@ -269,14 +269,14 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
 		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %X\n", ret)
 	}
-	fmt.Printf("Collect return code is %X\n", ret) // return code will be ERROR_SUCCESS
+	fmt.Printf("Collect return code is 0x%X\n", ret) // return code will be ERROR_SUCCESS
 
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
-		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %X\n", ret)
+		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is 0x%X\n", ret)
 	}
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second CStatus is %s (%X)\n", derp.CStatus, derp.CStatus)
+		fmt.Printf("ERROR: Second CStatus is 0x%X\n", derp.CStatus, derp.CStatus)
 	}
 	fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
 
