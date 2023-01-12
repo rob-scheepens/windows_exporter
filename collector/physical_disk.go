@@ -243,7 +243,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("ERROR: PdhOpenQuery return code is %X\n", ret)
 	}
 
-	ret = win.PdhAddEnglishCounter(handle, "\\physicaldisk(0)\\avg. disk sec/read", 0, &counterHandle)
+	ret = win.PdhAddEnglishCounter(handle, "\\physicaldisk(1)\\avg. disk sec/read", 0, &counterHandle)
 	if ret != win.PDH_CSTATUS_VALID_DATA {  // Error checking
 		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %X\n", ret)
 	}
