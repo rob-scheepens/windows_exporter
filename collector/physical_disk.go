@@ -204,36 +204,37 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	var ret = win.PdhAddEnglishCounter(*c.query, "\\physicaldisk(\"O c: f:\")\\avg. disk sec/read", 0, &counterHandle)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: PdhAddEnglishCounter return code is 0x%X\n", ret)
+		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %s (0x%X)\n",
+			win.PDHErrors[ret], ret)
 	}
 
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First PdhCollectQueryData return code is 0x%X\n", ret)
+		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 
 	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 	var zero uint32 = 0 // TODO (cbwest): Figure out what this argument does.
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %X\n", ret)
+		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First CStatus is %s (%X)\n", derp.CStatus, derp.CStatus)
+		fmt.Printf("ERROR: First CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 	}
 
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %X\n", ret)
+		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
-	fmt.Printf("Collect return code is 0x%X\n", ret) // return code will be ERROR_SUCCESS
+	fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
 
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is 0x%X\n", ret)
+		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second CStatus is 0x%X\n", derp.CStatus, derp.CStatus)
+		fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 	}
 	fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
 
