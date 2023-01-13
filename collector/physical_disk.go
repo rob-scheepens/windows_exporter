@@ -5,7 +5,7 @@ package collector
 
 import (
 	"fmt"
-	"github.com/lxn/win"
+	"github.com/cbwest3-ntnx/win"
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"

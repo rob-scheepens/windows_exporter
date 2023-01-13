@@ -6,6 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.6
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d
+	github.com/cbwest3-ntnx/win v0.0.0-20230113001944-5585edc28a14
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/dimchansky/utfbom v1.1.1
@@ -30,3 +31,5 @@ require (
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/lxn/win => github.com/cbwest3-ntnx/win v0.0.0-20230113000535-d7d4144b21c0
