@@ -214,8 +214,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 
 	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-	var zero uint32 = 0 // TODO (cbwest): Figure out what this argument does.
-	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
+	var format uint32 = win.PDH_FMT_DOUBLE
+	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &format, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
@@ -229,7 +229,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 	fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
 
-	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &zero, &derp)
+	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &format, &derp)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
