@@ -1,6 +1,22 @@
 //go:build windows
 // +build windows
 
+// From https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhaddenglishcountera
+
+// Note: If the counter path contains a wildcard character, the non-wildcard
+// portions of the path will be localized, but wildcards will not be expanded
+// before adding the localized counter path to the query. In this case, you
+// will need use the following procedure to add all matching counter names to
+// the query.
+//     - Make a query
+//     - Use PdhAddEnglishCounter with the string containing wildcards
+//     - Use PdhGetCounterInfo on the counter handle returned by
+//       PdhAddEnglishCounter to get a localized full path (szFullPath.) This
+//       string still contains wildcards, but the non-wildcard parts are now
+//       localized.
+//     - Use PdhExpandWildCardPath to expand the wildcards.
+//     - Use PdhAddCounter on each of the resulting paths
+
 package collector
 
 import (
