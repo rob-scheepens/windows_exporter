@@ -238,6 +238,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
+	fmt.Printf("FullPath=%s\n", counterInfo.FullPath)
+	fmt.Printf("MachineName=%s\n", counterInfo.CounterPath.MachineName)
 
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
