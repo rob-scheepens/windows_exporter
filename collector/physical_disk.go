@@ -224,6 +224,21 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 			win.PDHErrors[ret], ret)
 	}
 
+	// Call PdhGetCounterInfo twice to get buffer size, per
+	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetcounterinfoa#remarks.
+	var bufSize uint32 = 0
+	var retrieveExplainText uint32 = 0
+	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, nil)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: First PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
+	var counterInfo win.PDH_COUNTER_INFO
+	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, &counterInfo)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
