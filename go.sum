@@ -136,6 +136,8 @@ github.com/cbwest3-ntnx/win v0.0.0-20230113003844-fa355cfa8552 h1:0b2SYKmZqF4WHR
 github.com/cbwest3-ntnx/win v0.0.0-20230113003844-fa355cfa8552/go.mod h1:vjQ5LsbHLoOPV215WcH1C0/cMHeymv4jVJOLnT8fNvU=
 github.com/cbwest3-ntnx/win v0.0.0-20230117145337-728c307f2f8b h1:rlbBDgSU9YigoNydcGRiUrG6h0EOiAriVIj1VrqGdGw=
 github.com/cbwest3-ntnx/win v0.0.0-20230117145337-728c307f2f8b/go.mod h1:vjQ5LsbHLoOPV215WcH1C0/cMHeymv4jVJOLnT8fNvU=
+github.com/cbwest3-ntnx/win v0.0.0-20230117185940-cf84d8a7a3e9 h1:EmLSYMEOiKCT6vRp3vznrqqNPmOlx2fEZ59C1qSIVrw=
+github.com/cbwest3-ntnx/win v0.0.0-20230117185940-cf84d8a7a3e9/go.mod h1:vjQ5LsbHLoOPV215WcH1C0/cMHeymv4jVJOLnT8fNvU=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
