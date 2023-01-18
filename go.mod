@@ -6,7 +6,7 @@ require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/Microsoft/hcsshim v0.9.6
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d
-	github.com/cbwest3-ntnx/win v0.0.0-20230117192333-c81efdc9ce6a
+	github.com/cbwest3-ntnx/win v0.0.0-20230118163215-ac24935f5a9e
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
 	github.com/dimchansky/utfbom v1.1.1
