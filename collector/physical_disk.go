@@ -238,8 +238,23 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
-	fmt.Printf("FullPath=%s\n", counterInfo.FullPath)
-	fmt.Printf("MachineName=%s\n", counterInfo.CounterPath.MachineName)
+	fmt.Printf("szFullPath=%s\n", counterInfo.SzFullPath)
+	fmt.Printf("szMachineName=%s\n", counterInfo.CounterPath.SzMachineName)
+
+	// // Call PdhExpandWildCardPath twice, per
+	// // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
+	// var expandFlags uint32 = 0
+	// var pathListLength uint32 = 0
+	// ret = win.PdhExpandWildCardPath(nil, counterInfo.SzFullPath, nil, &pathListLength, &expandFlags)
+	// if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+	// 	fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	// }
+
+	// var expandedPathList []string
+	// ret = win.PdhExpandWildCardPath(nil, counterInfo.SzFullPath, &expandedPathList, &pathListLength, &expandFlags)
+	// if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+	// 	fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	// }
 
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
