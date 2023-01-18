@@ -238,8 +238,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
-	fmt.Printf("szFullPath=%s\n", counterInfo.SzFullPath)
-	fmt.Printf("szMachineName=%s\n", counterInfo.CounterPath.SzMachineName)
+	fmt.Printf("SzFullPath=%s\n", win.UTF16PtrToString(counterInfo.SzFullPath))
+	fmt.Printf("SzMachineName=%s\n", win.UTF16PtrToString(counterInfo.CounterPath.SzMachineName))
 
 	// // Call PdhExpandWildCardPath twice, per
 	// // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
