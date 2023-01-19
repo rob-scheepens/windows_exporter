@@ -48,6 +48,7 @@ var (
 type MetricMap struct {
 	PdhPath        string
 	PromDesc       *prometheus.Desc
+	CounterType    uint32
 	CounterHandles []win.PDH_HCOUNTER
 }
 
@@ -66,6 +67,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	}
 	var pdc = PhysicalDiskCollector{query: &handle}
 	pdc.Metrics = append(pdc.Metrics, MetricMap{
+		CounterType: win.PDH_FMT_DOUBLE,
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
 			"Shows the average time, in seconds, of a read operation from the disk (PhysicalDisk.AvgDiskSecPerRead)",
@@ -91,7 +93,8 @@ func NewPhysicalDiskCollector() (Collector, error) {
 			}
 			metric.CounterHandles = append(metric.CounterHandles, counterHandle)
 		}
-		fmt.Printf("%s has paths: %s", metric.PromDesc, paths)
+		fmt.Printf("%s has paths: %s\n", metric.PromDesc, paths)
+		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.CounterHandles)
 	}
 	return &pdc, nil
 }
@@ -188,31 +191,33 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 
-	var counterHandle win.PDH_HCOUNTER
-	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-	var format uint32 = win.PDH_FMT_DOUBLE
-	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &format, &derp)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: First CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
-	}
+	for _, metric := range c.Metrics {
+		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.CounterHandles)
+		for _, counterHandle := range metric.CounterHandles {
+			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
+			ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &metric.CounterType, &derp)
+			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+			}
+			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: First CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
+			}
 
-	ret = win.PdhCollectQueryData(*c.query)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
+			ret = win.PdhCollectQueryData(*c.query)
+			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: Second PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+			}
+			fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
 
-	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &format, &derp)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+			ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &metric.CounterType, &derp)
+			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+			}
+			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
+			}
+			fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
+		}
 	}
-	if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
-	}
-	fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
-
 	return nil, nil
 }
