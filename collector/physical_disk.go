@@ -33,6 +33,7 @@ func init() {
 }
 
 var (
+	nullPtr       *uint16
 	diskWhitelist = kingpin.Flag(
 		"collector.physical_disk.disk-whitelist",
 		"Regexp of disks to whitelist. Disk name must both match whitelist and not match blacklist to be included.",
@@ -203,6 +204,60 @@ type MetricMap struct {
 	PromHelp         string
 }
 
+// This function should be reusable by all collectors.
+// TODO (cbwest): Do proper error handling.
+func localizeAndExpandCounter(query win.PDH_HQUERY, path string) ([]string, error) {
+	var counterHandle win.PDH_HCOUNTER
+	var ret = win.PdhAddEnglishCounter(query, path, 0, &counterHandle)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
+		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %s (0x%X)\n",
+			win.PDHErrors[ret], ret)
+	}
+
+	// Call PdhGetCounterInfo twice to get buffer size, per
+	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetcounterinfoa#remarks.
+	var bufSize uint32 = 0
+	var retrieveExplainText uint32 = 0
+	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, nil)
+	if ret != win.PDH_MORE_DATA { // error checking
+		fmt.Printf("ERROR: First PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
+	var counterInfo win.PDH_COUNTER_INFO
+	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, &counterInfo)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
+	// Call PdhExpandWildCardPath twice, per
+	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
+	var flags uint32 = 0
+	var pathListLength uint32 = 0
+	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, nullPtr, &pathListLength, &flags)
+	if ret != win.PDH_MORE_DATA { // error checking
+		fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+	if pathListLength < 1 {
+		fmt.Printf("ERROR: SOMETHING IS WRONG. pathListLength < 1, is %d.\n", pathListLength)
+	}
+
+	expandedPathList := make([]uint16, pathListLength)
+	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
+	var paths []string // avoid another var creation?
+	for i := 0; i < int(pathListLength); i += len(path) + 1 {
+		path = win.UTF16PtrToString(&expandedPathList[i])
+		if len(path) < 1 {  // expandedPathList has two nulls at the end.
+			continue
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
+}
+
 func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
 
 	// TODO (2023-01-19):
@@ -226,65 +281,19 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	//		- Allow users to blacklist disks.
 	//		- Be smart enough to query disks, and if any were added/removed, re-enumerate.
 
-	var counterHandle win.PDH_HCOUNTER
+	var path = "\\physicaldisk(*)\\avg. disk sec/read"
+	var paths, err = localizeAndExpandCounter(*c.query, "\\physicaldisk(*)\\avg. disk sec/read")
+	if err != nil {
+		fmt.Printf("ERROR: Unable to localize and enumerate paths for: %s\n%s", path, err)
+	}
+	fmt.Printf("SUCCESS: paths=%s", paths)
 
-	var ret = win.PdhAddEnglishCounter(*c.query, "\\physicaldisk(*)\\avg. disk sec/read", 0, &counterHandle)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %s (0x%X)\n",
-			win.PDHErrors[ret], ret)
-	}
-
-	// Call PdhGetCounterInfo twice to get buffer size, per
-	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetcounterinfoa#remarks.
-	var bufSize uint32 = 0
-	var retrieveExplainText uint32 = 0
-	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, nil)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: First PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-
-	var counterInfo win.PDH_COUNTER_INFO
-	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, &counterInfo)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	fmt.Printf("SzFullPath=%s\n", win.UTF16PtrToString(counterInfo.SzFullPath))
-	fmt.Printf("SzMachineName=%s\n", win.UTF16PtrToString(counterInfo.CounterPath.SzMachineName))
-
-	// // Call PdhExpandWildCardPath twice, per
-	// // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
-	var flags uint32 = 0
-	var pathListLength uint32 = 0
-	var nullPtr *uint16
-	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, nullPtr, &pathListLength, &flags)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	if ret != win.PDH_MORE_DATA {
-		fmt.Printf("ERROR: SOMETHING IS WRONG. PDH_MORE_DATA EXPECTED. RECEIVED %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	if pathListLength < 1 {
-		fmt.Printf("ERROR: SOMETHING IS WRONG. pathListLength < 1, is %d.\n", pathListLength)
-	} else {
-		fmt.Printf("pathListLength=%d.\n", pathListLength)
-	}
-	
-	expandedPathList := make([]uint16, pathListLength)
-	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
-	fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[1]))
-	for i := 0; i < int(pathListLength); i++ {
-		fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
-	}
-
-	ret = win.PdhCollectQueryData(*c.query)
+	ret := win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 
+	var counterHandle win.PDH_HCOUNTER
 	var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 	var format uint32 = win.PDH_FMT_DOUBLE
 	ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &format, &derp)
