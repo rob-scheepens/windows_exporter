@@ -265,6 +265,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 	if pathListLength < 1 {
 		fmt.Printf("ERROR: SOMETHING IS WRONG. pathListLength < 1, is %d.\n", pathListLength)
+	} else {
+		fmt.Printf("pathListLength=%d.\n", pathListLength)
 	}
 	
 	expandedPathList := make([]uint16, pathListLength)
@@ -272,6 +274,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
+	fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
+	fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[1]))
 	for i := 0; i < int(pathListLength); i++ {
 		fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
 	}
