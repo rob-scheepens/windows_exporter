@@ -205,16 +205,26 @@ type MetricMap struct {
 
 func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
 
-	// Goals
-	// Query PDH for specified counters for ALL disks in a system.
+	// TODO (2023-01-19):
+	// - In exporter startup:
+	//		- Create query.
+	//		- Call PdhAddEnglishCounter with the string containing wildcards.
+	//		- Use PdhGetCounterInfo on the counter handle.
+	//		- Use PdhExpandWildCardPath to expand the wildcards.
+	//		- Use PdhAddCounter on each of the resulting paths. Use the returned handle for lookups
+	//      - Store returned handles in data structures associated with the Prometheus metric.
 
-	// TODO (2023-01-11):
-	// - Put PdhOpenQuery() in context creation.
-	// - Put PdhAddEnglishCounter() in init() (maybe?)
-	// - Call PdhCollectQueryData() and PdhGetFormattedCounterValueDouble() in this function, collect()
+	// - In exporter Collect() function:
+	// 		- Call PdhColectData()
+
+	// - In collector Collect() function:
+	//		- Iterate through Prometheus metrics, use PDH counter handle to retrieve metrics.
+	//		- Perform necessary/minimal parsing to attach labels, etc.
+	//		- Add metric to Promethus exporter.
+
 	// Extra credit:
-	// - Allow users to blacklist disks.
-	// - Be smart enough to query disks, and if any were added/removed, re-enumerate.
+	//		- Allow users to blacklist disks.
+	//		- Be smart enough to query disks, and if any were added/removed, re-enumerate.
 
 	var counterHandle win.PDH_HCOUNTER
 
