@@ -255,9 +255,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
 	var flags uint32 = 0
 	var pathListLength uint32 = 0
-	var nullDatasource uint16 = 0
-	var nullBuffer uint16 = 0
-	ret = win.PdhExpandWildCardPath(&nullDatasource, counterInfo.SzFullPath, &nullBuffer, &pathListLength, &flags)
+	var nullPtr *uint16
+	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, nullPtr, &pathListLength, &flags)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
@@ -269,13 +268,12 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 	
 	expandedPathList := make([]uint16, pathListLength)
-	ret = win.PdhExpandWildCardPath(&nullDatasource, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
+	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
 		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 	for i := 0; i < int(pathListLength); i++ {
 		fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
-		return
 	}
 
 	ret = win.PdhCollectQueryData(*c.query)
