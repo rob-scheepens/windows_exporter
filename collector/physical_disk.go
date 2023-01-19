@@ -264,6 +264,10 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	if ret != win.PDH_MORE_DATA {
 		fmt.Printf("ERROR: SOMETHING IS WRONG. PDH_MORE_DATA EXPECTED. RECEIVED %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
+	if pathListLength < 1 {
+		fmt.Printf("ERROR: SOMETHING IS WRONG. pathListLength < 1, is %d.\n", pathListLength)
+	}
+	
 	expandedPathList := make([]uint16, pathListLength)
 	ret = win.PdhExpandWildCardPath(&nullDatasource, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
@@ -271,7 +275,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 	for i := 0; i < int(pathListLength); i++ {
 		fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
-		break
+		return
 	}
 
 	ret = win.PdhCollectQueryData(*c.query)
