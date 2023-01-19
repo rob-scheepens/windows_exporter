@@ -253,18 +253,26 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	// // Call PdhExpandWildCardPath twice, per
 	// // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
-	// var expandFlags uint32 = 0
-	// var pathListLength uint32 = 0
-	// ret = win.PdhExpandWildCardPath(nil, counterInfo.SzFullPath, nil, &pathListLength, &expandFlags)
-	// if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-	// 	fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	// }
-
-	// var expandedPathList []string
-	// ret = win.PdhExpandWildCardPath(nil, counterInfo.SzFullPath, &expandedPathList, &pathListLength, &expandFlags)
-	// if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-	// 	fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	// }
+	var flags uint32 = 0
+	var pathListLength uint32 = 0
+	var nullDatasource uint16 = 0
+	var nullBuffer uint16 = 0
+	ret = win.PdhExpandWildCardPath(&nullDatasource, counterInfo.SzFullPath, &nullBuffer, &pathListLength, &flags)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+	if ret != win.PDH_MORE_DATA {
+		fmt.Printf("ERROR: SOMETHING IS WRONG. PDH_MORE_DATA EXPECTED. RECEIVED %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+	expandedPathList := make([]uint16, pathListLength)
+	ret = win.PdhExpandWildCardPath(&nullDatasource, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
+		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+	for i := 0; i < int(pathListLength); i++ {
+		fmt.Printf("expandedPathList[0]=%s\n", win.UTF16PtrToString(&expandedPathList[0]))
+		break
+	}
 
 	ret = win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
