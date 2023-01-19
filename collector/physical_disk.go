@@ -25,7 +25,6 @@ import (
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"regexp"
 )
 
 func init() {
@@ -44,148 +43,57 @@ var (
 	).Default("").String()
 )
 
+// Map a single Prometheus metric, e.g. read_latency_seconds_total, to one or
+// more Windows PDH counters.
+type MetricMap struct {
+	PdhPath        string
+	PromDesc       *prometheus.Desc
+	CounterHandles []win.PDH_HCOUNTER
+}
+
 // A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
 type PhysicalDiskCollector struct {
 	Metrics []MetricMap
-	// RequestsQueued   *prometheus.Desc
-	// ReadBytesTotal   *prometheus.Desc
-	// ReadsTotal       *prometheus.Desc
-	// WriteBytesTotal  *prometheus.Desc
-	// WritesTotal      *prometheus.Desc
-	// ReadTime         *prometheus.Desc
-	// WriteTime        *prometheus.Desc
-	// IdleTime         *prometheus.Desc
-	// SplitIOs         *prometheus.Desc
-	ReadLatency *prometheus.Desc
-	// WriteLatency     *prometheus.Desc
-	// ReadWriteLatency *prometheus.Desc
-	query                *win.PDH_HQUERY
-	diskWhitelistPattern *regexp.Regexp
-	diskBlacklistPattern *regexp.Regexp
+	query   *win.PDH_HQUERY
 }
 
 // NewPhysicalDiskCollector ...
 func NewPhysicalDiskCollector() (Collector, error) {
 	const subsystem = "physical_disk"
-
-	// Make a bunch structs?
-	// Put them in a list?
-	// Submit PDH queries?
-	// Iterate through results?
-
-	// Static init, collect in a list:
-
-	// ReadBytesTotal: prometheus.NewDesc(
-	// 	prometheus.BuildFQName(Namespace, subsystem, "read_bytes_total"),
-	// 	"The number of bytes transferred from the disk during read operations (PhysicalDisk.DiskReadBytesPerSec)",
-	// 	[]string{"disk"},
-	// 	nil,
-	// ),
-
-	// ReadsTotal: prometheus.NewDesc(
-	// 	prometheus.BuildFQName(Namespace, subsystem, "reads_total"),
-	// 	"The number of read operations on the disk (PhysicalDisk.DiskReadsPerSec)",
-	// 	[]string{"disk"},
-	// 	nil,
-	// ),
-
 	var handle win.PDH_HQUERY
-
-	// szDataSource uintptr, dwUserData uintptr, phQuery *PDH_HQUERY
-	// szDataSource=0 for live data, dwUserData=0 not used
 	if ret := win.PdhOpenQuery(0, 0, &handle); ret != 0 {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
-
-	return &PhysicalDiskCollector{
-		query: &handle,
-		// RequestsQueued: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "requests_queued"),
-		// 	"The number of requests queued to the disk (PhysicalDisk.CurrentDiskQueueLength)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// ReadBytesTotal: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "read_bytes_total"),
-		// 	"The number of bytes transferred from the disk during read operations (PhysicalDisk.DiskReadBytesPerSec)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// ReadsTotal: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "reads_total"),
-		// 	"The number of read operations on the disk (PhysicalDisk.DiskReadsPerSec)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// WriteBytesTotal: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "write_bytes_total"),
-		// 	"The number of bytes transferred to the disk during write operations (PhysicalDisk.DiskWriteBytesPerSec)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// WritesTotal: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "writes_total"),
-		// 	"The number of write operations on the disk (PhysicalDisk.DiskWritesPerSec)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// ReadTime: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "read_seconds_total"),
-		// 	"Seconds that the disk was busy servicing read requests (PhysicalDisk.PercentDiskReadTime)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// WriteTime: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "write_seconds_total"),
-		// 	"Seconds that the disk was busy servicing write requests (PhysicalDisk.PercentDiskWriteTime)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// IdleTime: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "idle_seconds_total"),
-		// 	"Seconds that the disk was idle (PhysicalDisk.PercentIdleTime)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// SplitIOs: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "split_ios_total"),
-		// 	"The number of I/Os to the disk were split into multiple I/Os (PhysicalDisk.SplitIOPerSec)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		ReadLatency: prometheus.NewDesc(
+	var pdc = PhysicalDiskCollector{query: &handle}
+	pdc.Metrics = append(pdc.Metrics, MetricMap{
+		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
 			"Shows the average time, in seconds, of a read operation from the disk (PhysicalDisk.AvgDiskSecPerRead)",
 			[]string{"disk"},
 			nil,
 		),
+		PdhPath: "\\physicaldisk(*)\\avg. disk sec/read"})
 
-		// WriteLatency: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "write_latency_seconds_total"),
-		// 	"Shows the average time, in seconds, of a write operation to the disk (PhysicalDisk.AvgDiskSecPerWrite)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		// ReadWriteLatency: prometheus.NewDesc(
-		// 	prometheus.BuildFQName(Namespace, subsystem, "read_write_latency_seconds_total"),
-		// 	"Shows the time, in seconds, of the average disk transfer (PhysicalDisk.AvgDiskSecPerTransfer)",
-		// 	[]string{"disk"},
-		// 	nil,
-		// ),
-
-		diskWhitelistPattern: regexp.MustCompile(fmt.Sprintf("^(?:%s)$", *diskWhitelist)),
-		diskBlacklistPattern: regexp.MustCompile(fmt.Sprintf("^(?:%s)$", *diskBlacklist)),
-	}, nil
+	var userData uintptr
+	// Append expanded PDH counter to each metric. PDH instances become labels for Prometheus metrics.
+	for _, metric := range pdc.Metrics {
+		paths, err := localizeAndExpandCounter(handle, metric.PdhPath)
+		if err != nil {
+			fmt.Printf("ERROR: Failed to localize and expand wildcards for: %s", metric.PdhPath)
+			continue
+		}
+		for _, path := range paths {
+			var counterHandle win.PDH_HCOUNTER
+			ret := win.PdhAddCounter(handle, path, userData, &counterHandle)
+			if ret != win.PDH_CSTATUS_VALID_DATA {
+				fmt.Printf("ERROR: Failed to add expanded counter: %s", path)
+				continue
+			}
+			metric.CounterHandles = append(metric.CounterHandles, counterHandle)
+		}
+		fmt.Printf("%s has paths: %s", metric.PromDesc, paths)
+	}
+	return &pdc, nil
 }
 
 // Collect sends the metric values for each metric
@@ -196,12 +104,6 @@ func (c *PhysicalDiskCollector) Collect(ctx *ScrapeContext, ch chan<- prometheus
 		return err
 	}
 	return nil
-}
-
-type MetricMap struct {
-	PdhQuery         string
-	PromMetricSuffix string
-	PromHelp         string
 }
 
 // This function should be reusable by all collectors.
@@ -250,7 +152,7 @@ func localizeAndExpandCounter(query win.PDH_HQUERY, path string) ([]string, erro
 	var paths []string // avoid another var creation?
 	for i := 0; i < int(pathListLength); i += len(path) + 1 {
 		path = win.UTF16PtrToString(&expandedPathList[i])
-		if len(path) < 1 {  // expandedPathList has two nulls at the end.
+		if len(path) < 1 { // expandedPathList has two nulls at the end.
 			continue
 		}
 		paths = append(paths, path)
@@ -280,13 +182,6 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// Extra credit:
 	//		- Allow users to blacklist disks.
 	//		- Be smart enough to query disks, and if any were added/removed, re-enumerate.
-
-	var path = "\\physicaldisk(*)\\avg. disk sec/read"
-	var paths, err = localizeAndExpandCounter(*c.query, "\\physicaldisk(*)\\avg. disk sec/read")
-	if err != nil {
-		fmt.Printf("ERROR: Unable to localize and enumerate paths for: %s\n%s", path, err)
-	}
-	fmt.Printf("SUCCESS: paths=%s", paths)
 
 	ret := win.PdhCollectQueryData(*c.query)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
@@ -318,112 +213,6 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 	}
 	fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
-
-	// END: golang.org/x/sys/windows APPROACH:
-
-	// END: Imported test case to drive PDH query.
-
-	// Rework this to allow disk blacklisting.
-	// if disk.Name == "_Total" ||
-	// 	c.diskBlacklistPattern.MatchString(disk.Name) ||
-	// 	!c.diskWhitelistPattern.MatchString(disk.Name) {
-	// 	continue
-	// }
-
-	// BAD! (nested loops)
-	// for val in range vals {
-	// 	for metric in metrics {
-	// 		if val.InstanceName == metric.Name {
-	// 		}
-	// 	}
-	// }
-
-	// for _, val := range vals {
-	// 	fmt.Println(`I found a value!`)
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.RequestsQueued,
-	// 	prometheus.GaugeValue,
-	// 	disk.CurrentDiskQueueLength,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.ReadBytesTotal,
-	// 	prometheus.CounterValue,
-	// 	disk.DiskReadBytesPerSec,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.ReadsTotal,
-	// 	prometheus.CounterValue,
-	// 	disk.DiskReadsPerSec,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.WriteBytesTotal,
-	// 	prometheus.CounterValue,
-	// 	disk.DiskWriteBytesPerSec,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.WritesTotal,
-	// 	prometheus.CounterValue,
-	// 	disk.DiskWritesPerSec,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.ReadTime,
-	// 	prometheus.CounterValue,
-	// 	disk.PercentDiskReadTime,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.WriteTime,
-	// 	prometheus.CounterValue,
-	// 	disk.PercentDiskWriteTime,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.IdleTime,
-	// 	prometheus.CounterValue,
-	// 	disk.PercentIdleTime,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.SplitIOs,
-	// 	prometheus.CounterValue,
-	// 	disk.SplitIOPerSec,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.ReadLatency,
-	// 	prometheus.CounterValue,
-	// 	val.Value.(float64),
-	// 	"disk1-parse-later",
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.WriteLatency,
-	// 	prometheus.CounterValue,
-	// 	disk.AvgDiskSecPerWrite*ticksToSecondsScaleFactor,
-	// 	disk.Name,
-	// )
-
-	// ch <- prometheus.MustNewConstMetric(
-	// 	c.ReadWriteLatency,
-	// 	prometheus.CounterValue,
-	// 	disk.AvgDiskSecPerTransfer*ticksToSecondsScaleFactor,
-	// 	disk.Name,
-	// )
-	// }
 
 	return nil, nil
 }
