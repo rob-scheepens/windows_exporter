@@ -88,7 +88,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 			var counterHandle *win.PDH_HCOUNTER
 			ret := win.PdhAddCounter(handle, path, userData, counterHandle)
 			if ret != win.PDH_CSTATUS_VALID_DATA {
-				fmt.Printf("ERROR: Failed to add expanded counter: %s", path)
+				fmt.Printf("ERROR: Failed to add expanded counter %s : %s (0x%X)\n", path, win.PDHErrors[ret], ret)
 				continue
 			}
 			metric.CounterHandles = append(metric.CounterHandles, counterHandle)
