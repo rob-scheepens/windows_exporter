@@ -49,7 +49,7 @@ type MetricMap struct {
 	PdhPath        string
 	PromDesc       *prometheus.Desc
 	CounterType    uint32
-	CounterHandles []win.PDH_HCOUNTER
+	CounterHandles []*win.PDH_HCOUNTER
 }
 
 // A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
@@ -85,8 +85,8 @@ func NewPhysicalDiskCollector() (Collector, error) {
 			continue
 		}
 		for _, path := range paths {
-			var counterHandle win.PDH_HCOUNTER
-			ret := win.PdhAddCounter(handle, path, userData, &counterHandle)
+			var counterHandle *win.PDH_HCOUNTER
+			ret := win.PdhAddCounter(handle, path, userData, counterHandle)
 			if ret != win.PDH_CSTATUS_VALID_DATA {
 				fmt.Printf("ERROR: Failed to add expanded counter: %s", path)
 				continue
@@ -195,7 +195,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.CounterHandles)
 		for _, counterHandle := range metric.CounterHandles {
 			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-			ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &metric.CounterType, &derp)
+			ret = win.PdhGetFormattedCounterValueDouble(*counterHandle, &metric.CounterType, &derp)
 			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 			}
@@ -209,7 +209,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 			}
 			fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
 
-			ret = win.PdhGetFormattedCounterValueDouble(counterHandle, &metric.CounterType, &derp)
+			ret = win.PdhGetFormattedCounterValueDouble(*counterHandle, &metric.CounterType, &derp)
 			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 			}
