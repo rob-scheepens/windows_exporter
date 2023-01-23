@@ -61,11 +61,11 @@ type PhysicalDiskCollector struct {
 // NewPhysicalDiskCollector ...
 func NewPhysicalDiskCollector() (Collector, error) {
 	const subsystem = "physical_disk"
-	var handle win.PDH_HQUERY
-	if ret := win.PdhOpenQuery(0, 0, &handle); ret != 0 {
+	var queryHandle win.PDH_HQUERY
+	if ret := win.PdhOpenQuery(0, 0, &queryHandle); ret != 0 {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
-	var pdc = PhysicalDiskCollector{query: &handle}
+	var pdc = PhysicalDiskCollector{query: &queryHandle}
 	pdc.Metrics = append(pdc.Metrics, MetricMap{
 		CounterType: win.PDH_FMT_DOUBLE,
 		PromDesc: prometheus.NewDesc(
@@ -79,14 +79,14 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	var userData uintptr
 	// Append expanded PDH counter to each metric. PDH instances become labels for Prometheus metrics.
 	for _, metric := range pdc.Metrics {
-		paths, err := localizeAndExpandCounter(handle, metric.PdhPath)
+		paths, err := localizeAndExpandCounter(queryHandle, metric.PdhPath)
 		if err != nil {
 			fmt.Printf("ERROR: Failed to localize and expand wildcards for: %s", metric.PdhPath)
 			continue
 		}
 		for _, path := range paths {
 			var counterHandle *win.PDH_HCOUNTER
-			ret := win.PdhAddCounter(handle, path, userData, counterHandle)
+			ret := win.PdhAddCounter(queryHandle, path, userData, counterHandle)
 			if ret != win.PDH_CSTATUS_VALID_DATA {
 				fmt.Printf("ERROR: Failed to add expanded counter %s : %s (0x%X)\n", path, win.PDHErrors[ret], ret)
 				continue
