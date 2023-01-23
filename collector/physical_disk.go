@@ -54,7 +54,7 @@ type MetricMap struct {
 
 // A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
 type PhysicalDiskCollector struct {
-	Metrics []MetricMap
+	Metrics []*MetricMap
 	query   *win.PDH_HQUERY
 }
 
@@ -66,7 +66,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
 	var pdc = PhysicalDiskCollector{query: &handle}
-	pdc.Metrics = append(pdc.Metrics, MetricMap{
+	pdc.Metrics = append(pdc.Metrics, &MetricMap{
 		CounterType: win.PDH_FMT_DOUBLE,
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
