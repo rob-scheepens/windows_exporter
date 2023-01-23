@@ -96,7 +96,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("%s has paths: %s\n", metric.PromDesc, paths)
 		fmt.Printf("#1 %s has CounterHandles: %s\n", metric.PromDesc, metric.CounterHandles)
 	}
-	fmt.Printf("#2 %s has CounterHandles: %s\n", metric.PromDesc, metric.CounterHandles)
+	fmt.Printf("pdc.Metrics: %s\n", pdc.Metrics)
 	return &pdc, nil
 }
 
