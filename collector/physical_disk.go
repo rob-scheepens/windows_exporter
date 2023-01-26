@@ -46,7 +46,7 @@ var (
 
 // A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
 type PhysicalDiskCollector struct {
-	Metrics []*PrometheusMetricMap
+	PromMetrics []*PrometheusMetricMap
 	query   *win.PDH_HQUERY
 }
 
@@ -72,7 +72,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
 	var pdc = PhysicalDiskCollector{query: &queryHandle}
-	pdc.Metrics = append(pdc.Metrics, &PrometheusMetricMap{
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		CounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:     "\\physicaldisk(*)\\avg. disk sec/read",
 		PromDesc: prometheus.NewDesc(
@@ -84,7 +84,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 
 	var userData uintptr
 	// Append expanded PDH counter to each metric. PDH instances become labels for Prometheus metrics.
-	for _, metric := range pdc.Metrics {
+	for _, metric := range pdc.PromMetrics {
 		paths, diskNumbers, err := localizeAndExpandCounter(queryHandle, metric.PdhPath)
 		if err != nil {
 			fmt.Printf("ERROR: Failed to localize and expand wildcards for: %s", metric.PdhPath)
@@ -103,7 +103,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("%s has paths: %s\n", metric.PromDesc, paths)
 		fmt.Printf("#1 %s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 	}
-	fmt.Printf("pdc.Metrics: %s\n", pdc.Metrics)
+	fmt.Printf("pdc.PromMetrics: %s\n", pdc.PromMetrics)
 	return &pdc, nil
 }
 
@@ -202,7 +202,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
 
-	for _, metric := range c.Metrics {
+	for _, metric := range c.PromMetrics {
 		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 		for _, pdhMetric := range metric.PdhMetrics {
 			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
