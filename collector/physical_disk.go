@@ -175,6 +175,10 @@ func localizeAndExpandCounter(query win.PDH_HQUERY, path string) (paths []string
 		}
 		instance := path[instanceStartIndex + 1:instanceEndIndex]
 
+		if instance == "_Total" {  // Skip the _Total instance. That is for users to compute.
+			continue
+		}
+
 		// Parse disk number from the instance.
 		diskNumber, _, _ := strings.Cut(instance, " ")
 		fmt.Printf("instance='%s', diskNumber='%s'\n", instance, diskNumber)
