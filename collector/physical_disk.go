@@ -104,6 +104,13 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("#1 %s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 	}
 	fmt.Printf("pdc.PromMetrics: %s\n", pdc.PromMetrics)
+
+	// TODO (cbwest): Figure out where this should live.
+	ret := win.PdhCollectQueryData(*pdc.query)
+	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
+		fmt.Printf("ERROR: Initial PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
+	}
+
 	return &pdc, nil
 }
 
@@ -221,20 +228,6 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 		for _, pdhMetric := range metric.PdhMetrics {
 			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.CounterType, &derp)
-			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-				fmt.Printf("ERROR: First PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-			}
-			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-				fmt.Printf("ERROR: First CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
-			}
-
-			ret = win.PdhCollectQueryData(*c.query)
-			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-				fmt.Printf("ERROR: Second PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-			}
-			fmt.Printf("Collect return code is %s (0x%X)\n", win.PDHErrors[ret], ret) // return code will be ERROR_SUCCESS
-
 			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.CounterType, &derp)
 			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
