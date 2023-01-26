@@ -166,8 +166,19 @@ func localizeAndExpandCounter(query win.PDH_HQUERY, path string) (paths []string
 			continue
 		}
 
-		fmt.Printf("counterHandle.CounterPath.SzInstanceName='%s'", win.UTF16PtrToString(counterInfo.CounterPath.SzInstanceName))
-		diskNumber, _, _ := strings.Cut(win.UTF16PtrToString(counterInfo.CounterPath.SzInstanceName), " ")
+		// Parse PDH instance from the expanded counter path.
+		instanceStartIndex := strings.Index(path, "(")
+		instanceEndIndex := strings.Index(path, ")")
+		if (instanceStartIndex < 0 || instanceEndIndex < 0) {
+			fmt.Printf("Unable to parse PDH counter instance from '%s'", path)
+			continue
+		}
+		instance := path[instanceStartIndex + 1:instanceEndIndex]
+
+		// Parse disk number from the instance.
+		diskNumber, _, _ := strings.Cut(instance, " ")
+		fmt.Printf("instance='%s', diskNumber='%s'\n", instance, diskNumber)
+
 		paths = append(paths, path)
 		diskNumbers = append(diskNumbers, diskNumber)
 	}
