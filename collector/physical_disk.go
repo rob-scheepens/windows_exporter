@@ -227,7 +227,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 			}
-			fmt.Printf("derp.DoubleValue=%f\n", derp.DoubleValue)
+			fmt.Printf("metric.DiskNumber=%s, derp.DoubleValue=%f\n", pdhMetric.DiskNumber, derp.DoubleValue)
 		}
 	}
 	return nil, nil
