@@ -1,6 +1,10 @@
 //go:build windows
 // +build windows
 
+// Observations:
+// - Windows PDH PhysicalDisk metrics report rates. The Prometheus convention
+//   is for rates to be calculated. Gauges were implemented for rate metrics.
+
 // From https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhaddenglishcountera
 
 // Note: If the counter path contains a wildcard character, the non-wildcard
@@ -281,7 +285,6 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	// TODO (2023-01-19):
 	// - Proper error handling.
 	// - Windows counters cite "during the sample interval". Is this something we can/should manipulate?
-	// - Windows reports rates. Prometheus wants rates to be calculated. Do we use a Gauge or Counter?
 	// - In exporter startup:
 	//		- Create query.
 	//		- Call PdhAddEnglishCounter with the string containing wildcards.
@@ -308,7 +311,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	}
 
 	for _, metric := range c.PromMetrics {
-		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
+		//fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 		for _, pdhMetric := range metric.PdhMetrics {
 			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
 			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.PdhCounterType, &derp)
@@ -318,7 +321,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 			}
-			fmt.Printf("metric.DiskNumber=%s, derp.DoubleValue=%f\n", pdhMetric.DiskNumber, derp.DoubleValue)
+			//fmt.Printf("metric.DiskNumber=%s, derp.DoubleValue=%f\n", pdhMetric.DiskNumber, derp.DoubleValue)
 
 			ch <- prometheus.MustNewConstMetric(
 				metric.PromDesc,
