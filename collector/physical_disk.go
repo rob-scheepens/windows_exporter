@@ -73,12 +73,92 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
 	var pdc = PhysicalDiskCollector{PdhQuery: &queryHandle}
+
+	// Queue length.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\current disk queue length",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "queue_length"),
+			"Current Disk Queue Length is the number of requests outstanding on the disk at the time the performance data is collected. It also includes requests in service at the time of the collection. This is a instantaneous snapshot, not an average over the time interval. Multi-spindle disk devices can have multiple requests that are active at one time, but other concurrent requests are awaiting service. This counter might reflect a transitory high or low queue length, but if there is a sustained load on the disk drive, it is likely that this will be consistently high. Requests experience delays proportional to the length of this queue minus the number of spindles on the disks. For good performance, this difference should average less than two.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+
+	// Device utilization.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\% idle time",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "idle_seconds_total"),
+			"Percentage of time during the sample interval that the disk was idle.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+
+	// Latency.
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/read",
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
-			"Shows the average time, in seconds, of a read operation from the disk (PhysicalDisk.AvgDiskSecPerRead)",
+			"Average time, in seconds, of a read of data from the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/write",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "write_latency_seconds_total"),
+			"Average time, in seconds, of a write of data to the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+
+	// Ops.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk reads/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "reads_total"), // MISNOMER!
+			"Rate of read operations on the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk writes/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "writes_total"), // MISNOMER!
+			"Rate of write operations on the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+
+	// Throughput.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk read bytes/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "read_bytes_total"), // MISNOMER!
+			"Rate at which bytes are transferred from the disk during read operations.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk write bytes/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "write_bytes_total"), // MISNOMER!
+			"Rate at which bytes are transferred to the disk during write operations.",
 			[]string{"disk"},
 			nil,
 		),
@@ -200,6 +280,8 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	// TODO (2023-01-19):
 	// - Proper error handling.
+	// - Windows counters cite "during the sample interval". Is this something we can/should manipulate?
+	// - Windows reports rates. Prometheus wants rates to be calculated. Do we use a Gauge or Counter?
 	// - In exporter startup:
 	//		- Create query.
 	//		- Call PdhAddEnglishCounter with the string containing wildcards.
