@@ -47,7 +47,7 @@ var (
 // A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
 type PhysicalDiskCollector struct {
 	PromMetrics []*PrometheusMetricMap
-	query   *win.PDH_HQUERY
+	PdhQuery    *win.PDH_HQUERY
 }
 
 // Map a single Prometheus metric, e.g. read_latency_seconds_total, to one or
@@ -71,7 +71,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	if ret := win.PdhOpenQuery(0, 0, &queryHandle); ret != 0 {
 		fmt.Printf("ERROR: PdhOpenQuery return code is 0x%X\n", ret)
 	}
-	var pdc = PhysicalDiskCollector{query: &queryHandle}
+	var pdc = PhysicalDiskCollector{PdhQuery: &queryHandle}
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		CounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:     "\\physicaldisk(*)\\avg. disk sec/read",
@@ -100,13 +100,11 @@ func NewPhysicalDiskCollector() (Collector, error) {
 			var pdhMetric = PdhMetricMap{CounterHandle: pdhCounterHandle, DiskNumber: diskNumbers[index]}
 			metric.PdhMetrics = append(metric.PdhMetrics, &pdhMetric)
 		}
-		fmt.Printf("%s has paths: %s\n", metric.PromDesc, paths)
-		fmt.Printf("#1 %s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 	}
 	fmt.Printf("pdc.PromMetrics: %s\n", pdc.PromMetrics)
 
 	// TODO (cbwest): Figure out where this should live.
-	ret := win.PdhCollectQueryData(*pdc.query)
+	ret := win.PdhCollectQueryData(*pdc.PdhQuery)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: Initial PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
@@ -126,9 +124,9 @@ func (c *PhysicalDiskCollector) Collect(ctx *ScrapeContext, ch chan<- prometheus
 
 // This function should be reusable by all collectors.
 // TODO (cbwest): Do proper error handling.
-func localizeAndExpandCounter(query win.PDH_HQUERY, path string) (paths []string, diskNumbers []string, err error) {
+func localizeAndExpandCounter(pdhQuery win.PDH_HQUERY, path string) (paths []string, diskNumbers []string, err error) {
 	var counterHandle win.PDH_HCOUNTER
-	var ret = win.PdhAddEnglishCounter(query, path, 0, &counterHandle)
+	var ret = win.PdhAddEnglishCounter(pdhQuery, path, 0, &counterHandle)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %s (0x%X)\n",
 			win.PDHErrors[ret], ret)
@@ -176,13 +174,13 @@ func localizeAndExpandCounter(query win.PDH_HQUERY, path string) (paths []string
 		// Parse PDH instance from the expanded counter path.
 		instanceStartIndex := strings.Index(path, "(")
 		instanceEndIndex := strings.Index(path, ")")
-		if (instanceStartIndex < 0 || instanceEndIndex < 0) {
+		if instanceStartIndex < 0 || instanceEndIndex < 0 {
 			fmt.Printf("Unable to parse PDH counter instance from '%s'", path)
 			continue
 		}
-		instance := path[instanceStartIndex + 1:instanceEndIndex]
+		instance := path[instanceStartIndex+1 : instanceEndIndex]
 
-		if instance == "_Total" {  // Skip the _Total instance. That is for users to compute.
+		if instance == "_Total" { // Skip the _Total instance. That is for users to compute.
 			continue
 		}
 
@@ -219,7 +217,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	//		- Allow users to blacklist disks.
 	//		- Be smart enough to query disks, and if any were added/removed, re-enumerate.
 
-	ret := win.PdhCollectQueryData(*c.query)
+	ret := win.PdhCollectQueryData(*c.PdhQuery)
 	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 		fmt.Printf("ERROR: First PdhCollectQueryData return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 	}
