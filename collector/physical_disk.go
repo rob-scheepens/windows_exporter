@@ -83,8 +83,38 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\current disk queue length",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "queue_length"),
+			prometheus.BuildFQName(Namespace, subsystem, "current_queue_length"),
 			"Current Disk Queue Length is the number of requests outstanding on the disk at the time the performance data is collected. It also includes requests in service at the time of the collection. This is a instantaneous snapshot, not an average over the time interval. Multi-spindle disk devices can have multiple requests that are active at one time, but other concurrent requests are awaiting service. This counter might reflect a transitory high or low queue length, but if there is a sustained load on the disk drive, it is likely that this will be consistently high. Requests experience delays proportional to the length of this queue minus the number of spindles on the disks. For good performance, this difference should average less than two.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk queue length",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "average_queue_length"),
+			"Average number of both read and write requests that were queued for the selected disk during the sample interval.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk read queue length",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "read_average_queue_length"),
+			"Average number of read requests that were queued for the selected disk during the sample interval.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk write queue length",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "write_average_queue_length"),
+			"Average number of write requests that were queued for the selected disk during the sample interval.",
 			[]string{"disk"},
 			nil,
 		),
@@ -95,8 +125,38 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\% idle time",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "idle_seconds_percent"),
+			prometheus.BuildFQName(Namespace, subsystem, "time_idle_percent"),
 			"Percentage of time during the sample interval that the disk was idle.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\% disk read time",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "time_read_percent"),
+			"Percentage of elapsed time that the selected disk drive was busy servicing read requests.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\% disk write time",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "time_write_percent"),
+			"Percentage of elapsed time that the selected disk drive was busy servicing write requests.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\% disk time",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "time_busy_percent"),
+			"Percentage of elapsed time that the selected disk drive was busy servicing read or write requests.",
 			[]string{"disk"},
 			nil,
 		),
@@ -109,6 +169,16 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_average_seconds"),
 			"Average time, in seconds, of a read of data from the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/transfer",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "transfer_latency_average_seconds"),
+			"Time, in seconds, of the average disk transfer.",
 			[]string{"disk"},
 			nil,
 		),
@@ -137,6 +207,26 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PromValueType: prometheus.GaugeValue})
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\split io/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "split_io_per_second"),
+			"Rate at which I/Os to the disk were split into multiple I/Os. A split I/O may result from requesting data of a size that is too large to fit into a single I/O or that the disk is fragmented.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk transfers/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "transfers_per_second"),
+			"Rate of read and write operations on the disk.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk writes/sec",
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "writes_per_second"),
@@ -146,7 +236,49 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		),
 		PromValueType: prometheus.GaugeValue})
 
+	// Op Sizes.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk bytes/read",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "read_average_bytes"),
+			"Average number of bytes transferred from the disk during read operations.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk bytes/write",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "write_average_bytes"),
+			"Average number of bytes transferred to the disk during write operations.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk bytes/transfer",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "transfer_average_bytes"),
+			"Average number of bytes transferred to or from the disk during write or read operations.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
+
 	// Throughput.
+	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\disk bytes/sec",
+		PromDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "bytes_per_second"),
+			"Rate bytes are transferred to or from the disk during write or read operations.",
+			[]string{"disk"},
+			nil,
+		),
+		PromValueType: prometheus.GaugeValue})
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk read bytes/sec",
