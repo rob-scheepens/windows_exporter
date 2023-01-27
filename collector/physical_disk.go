@@ -197,6 +197,7 @@ func localizeAndExpandCounter(pdhQuery win.PDH_HQUERY, path string) (paths []str
 func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
 
 	// TODO (2023-01-19):
+	// - Proper error handling.
 	// - In exporter startup:
 	//		- Create query.
 	//		- Call PdhAddEnglishCounter with the string containing wildcards.
@@ -206,7 +207,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	//      - Store returned handles in data structures associated with the Prometheus metric.
 
 	// - In exporter Collect() function:
-	// 		- Call PdhColectData()
+	// 		- Call PdhCollectData()
 
 	// - In collector Collect() function:
 	//		- Iterate through Prometheus metrics, use PDH counter handle to retrieve metrics.
