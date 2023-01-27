@@ -91,7 +91,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\% idle time",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "idle_seconds_total"),
+			prometheus.BuildFQName(Namespace, subsystem, "idle_seconds_percent"),
 			"Percentage of time during the sample interval that the disk was idle.",
 			[]string{"disk"},
 			nil,
@@ -103,7 +103,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/read",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
+			prometheus.BuildFQName(Namespace, subsystem, "read_latency_average_seconds"),
 			"Average time, in seconds, of a read of data from the disk.",
 			[]string{"disk"},
 			nil,
@@ -113,7 +113,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/write",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "write_latency_seconds_total"),
+			prometheus.BuildFQName(Namespace, subsystem, "write_latency_average_seconds"),
 			"Average time, in seconds, of a write of data to the disk.",
 			[]string{"disk"},
 			nil,
@@ -125,7 +125,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk reads/sec",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "reads_total"), // MISNOMER!
+			prometheus.BuildFQName(Namespace, subsystem, "reads_per_second"),
 			"Rate of read operations on the disk.",
 			[]string{"disk"},
 			nil,
@@ -135,7 +135,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk writes/sec",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "writes_total"), // MISNOMER!
+			prometheus.BuildFQName(Namespace, subsystem, "writes_per_second"),
 			"Rate of write operations on the disk.",
 			[]string{"disk"},
 			nil,
@@ -147,7 +147,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk read bytes/sec",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "read_bytes_total"), // MISNOMER!
+			prometheus.BuildFQName(Namespace, subsystem, "read_bytes_per_second"),
 			"Rate at which bytes are transferred from the disk during read operations.",
 			[]string{"disk"},
 			nil,
@@ -157,7 +157,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\disk write bytes/sec",
 		PromDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(Namespace, subsystem, "write_bytes_total"), // MISNOMER!
+			prometheus.BuildFQName(Namespace, subsystem, "write_bytes_per_second"),
 			"Rate at which bytes are transferred to the disk during write operations.",
 			[]string{"disk"},
 			nil,
