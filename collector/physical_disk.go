@@ -53,10 +53,11 @@ type PhysicalDiskCollector struct {
 // Map a single Prometheus metric, e.g. read_latency_seconds_total, to one or
 // more Windows PDH counters.
 type PrometheusMetricMap struct {
-	CounterType uint32
-	PdhPath     string // PDH string used to enumerate PDH counters (can include wildcards).
-	PromDesc    *prometheus.Desc
-	PdhMetrics  []*PdhMetricMap
+	PdhCounterType uint32
+	PdhPath        string // PDH string used to enumerate PDH counters (can include wildcards).
+	PdhMetrics     []*PdhMetricMap
+	PromDesc       *prometheus.Desc
+	PromValueType  prometheus.ValueType
 }
 
 type PdhMetricMap struct {
@@ -73,14 +74,15 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	}
 	var pdc = PhysicalDiskCollector{PdhQuery: &queryHandle}
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
-		CounterType: win.PDH_FMT_DOUBLE,
-		PdhPath:     "\\physicaldisk(*)\\avg. disk sec/read",
+		PdhCounterType: win.PDH_FMT_DOUBLE,
+		PdhPath:        "\\physicaldisk(*)\\avg. disk sec/read",
 		PromDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "read_latency_seconds_total"),
 			"Shows the average time, in seconds, of a read operation from the disk (PhysicalDisk.AvgDiskSecPerRead)",
 			[]string{"disk"},
 			nil,
-		)})
+		),
+		PromValueType: prometheus.GaugeValue})
 
 	var userData uintptr
 	// Append expanded PDH counter to each metric. PDH instances become labels for Prometheus metrics.
@@ -227,7 +229,7 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 		fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 		for _, pdhMetric := range metric.PdhMetrics {
 			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.CounterType, &derp)
+			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.PdhCounterType, &derp)
 			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 			}
@@ -235,6 +237,13 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
 			}
 			fmt.Printf("metric.DiskNumber=%s, derp.DoubleValue=%f\n", pdhMetric.DiskNumber, derp.DoubleValue)
+
+			ch <- prometheus.MustNewConstMetric(
+				metric.PromDesc,
+				metric.PromValueType,
+				derp.DoubleValue,
+				pdhMetric.DiskNumber,
+			)
 		}
 	}
 	return nil, nil
