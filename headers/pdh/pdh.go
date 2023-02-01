@@ -53,24 +53,24 @@ func LocalizeAndExpandCounter(pdhQuery win.PDH_HQUERY, path string) (paths []str
 	}
 
 	for i := 0; i < int(pathListLength); i += len(path) + 1 {
-		path = win.UTF16PtrToString(&expandedPathList[i])
+		expandedPath := win.UTF16PtrToString(&expandedPathList[i])
 		if len(path) < 1 { // expandedPathList has two nulls at the end.
 			continue
 		}
 
 		// Parse PDH instance from the expanded counter path.
-		instanceStartIndex := strings.Index(path, "(")
-		instanceEndIndex := strings.Index(path, ")")
+		instanceStartIndex := strings.Index(expandedPath, "(")
+		instanceEndIndex := strings.Index(expandedPath, ")")
 		if instanceStartIndex < 0 || instanceEndIndex < 0 {
 			fmt.Printf("Unable to parse PDH counter instance from '%s'", path)
 			continue
 		}
-		instance := path[instanceStartIndex+1 : instanceEndIndex]
+		instance := expandedPath[instanceStartIndex+1 : instanceEndIndex]
 
 		if instance == "_Total" { // Skip the _Total instance. That is for users to compute.
 			continue
 		}
-		paths = append(paths, path)
+		paths = append(paths, expandedPath)
 		instances = append(instances, instance)
 		fmt.Printf("Expanded %s to %s\n", path, paths)
 	}
