@@ -1,9 +1,10 @@
 //go:build windows
 // +build windows
 
-// Observations:
+// Notes:
 // - Windows PDH PhysicalDisk metrics report rates. The Prometheus convention
 //   is for rates to be calculated. Gauges were implemented for rate metrics.
+// - Windows counters cite "during the sample interval". Is this something we can/should manipulate?
 
 // From https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhaddenglishcountera
 
@@ -26,9 +27,9 @@ package collector
 import (
 	"fmt"
 	"github.com/cbwest3-ntnx/win"
+	"github.com/prometheus-community/windows_exporter/headers/pdh"
 	"github.com/prometheus-community/windows_exporter/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"strings"
 )
 
@@ -38,17 +39,9 @@ func init() {
 
 var (
 	nullPtr       *uint16
-	diskWhitelist = kingpin.Flag(
-		"collector.physical_disk.disk-whitelist",
-		"Regexp of disks to whitelist. Disk name must both match whitelist and not match blacklist to be included.",
-	).Default(".+").String()
-	diskBlacklist = kingpin.Flag(
-		"collector.physical_disk.disk-blacklist",
-		"Regexp of disks to blacklist. Disk name must both match whitelist and not match blacklist to be included.",
-	).Default("").String()
 )
 
-// A PhysicalDiskCollector is a Prometheus collector for perflib PhysicalDisk metrics
+// A PhysicalDiskCollector is a Prometheus collector for PhysicalDisk metrics gathered with PDH.
 type PhysicalDiskCollector struct {
 	PromMetrics []*PrometheusMetricMap
 	PdhQuery    *win.PDH_HQUERY
@@ -236,7 +229,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 		),
 		PromValueType: prometheus.GaugeValue})
 
-	// Op Sizes.
+	// Op sizes.
 	pdc.PromMetrics = append(pdc.PromMetrics, &PrometheusMetricMap{
 		PdhCounterType: win.PDH_FMT_DOUBLE,
 		PdhPath:        "\\physicaldisk(*)\\avg. disk bytes/read",
@@ -303,7 +296,7 @@ func NewPhysicalDiskCollector() (Collector, error) {
 	var userData uintptr
 	// Append expanded PDH counter to each metric. PDH instances become labels for Prometheus metrics.
 	for _, metric := range pdc.PromMetrics {
-		paths, diskNumbers, err := localizeAndExpandCounter(queryHandle, metric.PdhPath)
+		paths, instances, err := pdh.LocalizeAndExpandCounter(queryHandle, metric.PdhPath)
 		if err != nil {
 			fmt.Printf("ERROR: Failed to localize and expand wildcards for: %s", metric.PdhPath)
 			continue
@@ -315,7 +308,11 @@ func NewPhysicalDiskCollector() (Collector, error) {
 				fmt.Printf("ERROR: Failed to add expanded counter '%s': %s (0x%X)\n", path, win.PDHErrors[ret], ret)
 				continue
 			}
-			var pdhMetric = PdhMetricMap{CounterHandle: pdhCounterHandle, DiskNumber: diskNumbers[index]}
+
+			// PhysicalDisk instances include disk number and optionally mounted drives, e.g. '1' or '1 C:'.
+			// We only use the disk number as a label.
+			diskNumber, _, _:= strings.Cut(instances[index], " ")
+			var pdhMetric = PdhMetricMap{CounterHandle: pdhCounterHandle, DiskNumber: diskNumber}
 			metric.PdhMetrics = append(metric.PdhMetrics, &pdhMetric)
 		}
 	}
@@ -340,83 +337,10 @@ func (c *PhysicalDiskCollector) Collect(ctx *ScrapeContext, ch chan<- prometheus
 	return nil
 }
 
-// This function should be reusable by all collectors.
-// TODO (cbwest): Do proper error handling.
-func localizeAndExpandCounter(pdhQuery win.PDH_HQUERY, path string) (paths []string, diskNumbers []string, err error) {
-	var counterHandle win.PDH_HCOUNTER
-	var ret = win.PdhAddEnglishCounter(pdhQuery, path, 0, &counterHandle)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
-		fmt.Printf("ERROR: PdhAddEnglishCounter return code is %s (0x%X)\n",
-			win.PDHErrors[ret], ret)
-	}
-
-	// Call PdhGetCounterInfo twice to get buffer size, per
-	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhgetcounterinfoa#remarks.
-	var bufSize uint32 = 0
-	var retrieveExplainText uint32 = 0
-	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, nil)
-	if ret != win.PDH_MORE_DATA { // error checking
-		fmt.Printf("ERROR: First PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-
-	var counterInfo win.PDH_COUNTER_INFO
-	ret = win.PdhGetCounterInfo(counterHandle, uintptr(retrieveExplainText), &bufSize, &counterInfo)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: Second PdhGetCounterInfo return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-
-	// Call PdhExpandWildCardPath twice, per
-	// https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhexpandwildcardpathha#remarks.
-	var flags uint32 = 0
-	var pathListLength uint32 = 0
-	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, nullPtr, &pathListLength, &flags)
-	if ret != win.PDH_MORE_DATA { // error checking
-		fmt.Printf("ERROR: First PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-	if pathListLength < 1 {
-		fmt.Printf("ERROR: SOMETHING IS WRONG. pathListLength < 1, is %d.\n", pathListLength)
-	}
-
-	expandedPathList := make([]uint16, pathListLength)
-	ret = win.PdhExpandWildCardPath(nullPtr, counterInfo.SzFullPath, &expandedPathList[0], &pathListLength, &flags)
-	if ret != win.PDH_CSTATUS_VALID_DATA { // error checking
-		fmt.Printf("ERROR: Second PdhExpandWildCardPath return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
-	}
-
-	for i := 0; i < int(pathListLength); i += len(path) + 1 {
-		path = win.UTF16PtrToString(&expandedPathList[i])
-		if len(path) < 1 { // expandedPathList has two nulls at the end.
-			continue
-		}
-
-		// Parse PDH instance from the expanded counter path.
-		instanceStartIndex := strings.Index(path, "(")
-		instanceEndIndex := strings.Index(path, ")")
-		if instanceStartIndex < 0 || instanceEndIndex < 0 {
-			fmt.Printf("Unable to parse PDH counter instance from '%s'", path)
-			continue
-		}
-		instance := path[instanceStartIndex+1 : instanceEndIndex]
-
-		if instance == "_Total" { // Skip the _Total instance. That is for users to compute.
-			continue
-		}
-
-		// Parse disk number from the instance.
-		diskNumber, _, _ := strings.Cut(instance, " ")
-		fmt.Printf("instance='%s', diskNumber='%s'\n", instance, diskNumber)
-
-		paths = append(paths, path)
-		diskNumbers = append(diskNumbers, diskNumber)
-	}
-	return paths, diskNumbers, nil
-}
-
 func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus.Metric) (*prometheus.Desc, error) {
 
 	// TODO (2023-01-19):
 	// - Proper error handling.
-	// - Windows counters cite "during the sample interval". Is this something we can/should manipulate?
 	// - In exporter startup:
 	//		- Create query.
 	//		- Call PdhAddEnglishCounter with the string containing wildcards.
@@ -427,11 +351,6 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 
 	// - In exporter Collect() function:
 	// 		- Call PdhCollectData()
-
-	// - In collector Collect() function:
-	//		- Iterate through Prometheus metrics, use PDH counter handle to retrieve metrics.
-	//		- Perform necessary/minimal parsing to attach labels, etc.
-	//		- Add metric to Promethus exporter.
 
 	// Extra credit:
 	//		- Allow users to blacklist disks.
@@ -445,20 +364,19 @@ func (c *PhysicalDiskCollector) collect(ctx *ScrapeContext, ch chan<- prometheus
 	for _, metric := range c.PromMetrics {
 		//fmt.Printf("%s has CounterHandles: %s\n", metric.PromDesc, metric.PdhMetrics)
 		for _, pdhMetric := range metric.PdhMetrics {
-			var derp win.PDH_FMT_COUNTERVALUE_DOUBLE
-			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.PdhCounterType, &derp)
+			var counter win.PDH_FMT_COUNTERVALUE_DOUBLE
+			ret = win.PdhGetFormattedCounterValueDouble(pdhMetric.CounterHandle, &metric.PdhCounterType, &counter)
 			if ret != win.PDH_CSTATUS_VALID_DATA { // Error checking
 				fmt.Printf("ERROR: Second PdhGetFormattedCounterValueDouble return code is %s (0x%X)\n", win.PDHErrors[ret], ret)
 			}
-			if derp.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
-				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[derp.CStatus], derp.CStatus)
+			if counter.CStatus != win.PDH_CSTATUS_VALID_DATA { // Error checking
+				fmt.Printf("ERROR: Second CStatus is %s (0x%X)\n", win.PDHErrors[counter.CStatus], counter.CStatus)
 			}
-			//fmt.Printf("metric.DiskNumber=%s, derp.DoubleValue=%f\n", pdhMetric.DiskNumber, derp.DoubleValue)
-
+			//fmt.Printf("metric.DiskNumber=%s, counter.DoubleValue=%f\n", pdhMetric.DiskNumber, counter.DoubleValue)
 			ch <- prometheus.MustNewConstMetric(
 				metric.PromDesc,
 				metric.PromValueType,
-				derp.DoubleValue,
+				counter.DoubleValue,
 				pdhMetric.DiskNumber,
 			)
 		}
