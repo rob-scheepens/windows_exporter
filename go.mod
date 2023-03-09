@@ -11,10 +11,11 @@ require (
 	github.com/leoluk/perflib_exporter v0.2.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
-	github.com/prometheus/common v0.39.0
-	github.com/prometheus/exporter-toolkit v0.8.2
+	github.com/prometheus/common v0.41.0
+	github.com/prometheus/exporter-toolkit v0.9.1
 	github.com/sirupsen/logrus v1.9.0
-	golang.org/x/sys v0.4.0
+	go.opencensus.io v0.23.0 // indirect
+	golang.org/x/sys v0.6.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/yaml.v3 v3.0.1
 )
